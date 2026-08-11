@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Urlaubshinweis</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./node_modules/xlsx/dist/xlsx.full.min.js" defer></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Urlaubsverfall dokumentieren</p>
+          <h1>Urlaubshinweis</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="configToggleButton" class="secondary-button" type="button">Konfiguration</button>
+          <button id="clearLogButton" class="ghost-button" type="button">Protokoll leeren</button>
+          <form class="logout-form" method="post" action="/logout">
+            <button class="ghost-button" type="submit">Abmelden</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="configPanel" class="config-panel hidden">
+        <div class="config-header">
+          <button id="configBackButton" class="ghost-button" type="button">Zurück</button>
+          <button id="deleteAllButton" class="danger-button" type="button">Alles löschen</button>
+        </div>
+        <div class="config-grid">
+          <div id="mappingPanel" class="mapping-panel hidden">
+            <div class="section-title">
+              <h2>Spaltenzuordnung</h2>
+              <button id="applyMappingButton" class="ghost-button" type="button">Neu berechnen</button>
+            </div>
+            <div id="mappingGrid" class="mapping-grid"></div>
+          </div>
+
+          <div class="message-box">
+            <div class="section-title">
+              <h2>E-Mail-Text Mitarbeiter</h2>
+              <button id="resetTemplateButton" class="ghost-button" type="button">Texte zuruecksetzen</button>
+            </div>
+            <label class="template-version">
+              <span>Textversion</span>
+              <input id="templateVersionInput" type="text" value="Urlaubshinweis 2026-01" />
+            </label>
+            <textarea id="templateInput" rows="14"></textarea>
+          </div>
+
+          <div class="message-box">
+            <h2>E-Mail-Text ASP</h2>
+            <textarea id="aspTemplateInput" rows="14"></textarea>
+          </div>
+
+          <div class="variables-box">
+            <h2>Verfuegbare Variablen</h2>
+            <dl class="variable-list">
+              <div><dt><code>{{email}}</code></dt><dd>E-Mail-Adresse des Mitarbeiters, Versandziel der Mitarbeiter-Mail.</dd></div>
+              <div><dt><code>{{name}}</code></dt><dd>Name des Mitarbeiters.</dd></div>
+              <div><dt><code>{{emailAsp}}</code></dt><dd>E-Mail-Adresse der Ansprechperson / ASP.</dd></div>
+              <div><dt><code>{{responsible}}</code></dt><dd>Zustaendige Person oder Arbeitszweig.</dd></div>
+              <div><dt><code>{{Zustaendig}}</code></dt><dd>Alias fuer die zustaendige Person im ASP-Text.</dd></div>
+              <div><dt><code>{{manager}}</code></dt><dd>Alias fuer die zustaendige Person.</dd></div>
+              <div><dt><code>{{entitlement}}</code></dt><dd>Anspruch dieses Jahr.</dd></div>
+              <div><dt><code>{{previousRemaining}}</code></dt><dd>Resturlaub aus dem Vorjahr.</dd></div>
+              <div><dt><code>{{taken}}</code></dt><dd>Bereits genommene Urlaubstage.</dd></div>
+              <div><dt><code>{{remaining}}</code></dt><dd>Offene Urlaubstage.</dd></div>
+              <div><dt><code>{{offen}}</code></dt><dd>Alias fuer offene Urlaubstage aus der Importspalte Offen.</dd></div>
+              <div><dt><code>{{employeeList}}</code></dt><dd>Liste offener Mitarbeitender in der ASP-Mail.</dd></div>
+              <div><dt><code>{{employeeTable}}</code></dt><dd>HTML-Tabelle offener Mitarbeitender in der ASP-Mail.</dd></div>
+              <div><dt><code>{{sender}}</code></dt><dd>Absender/Leitung aus dem Eingabefeld.</dd></div>
+              <div><dt><code>{{deadline}}</code></dt><dd>Stichtag aus dem Eingabefeld.</dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel controls-panel">
+          <div class="upload-zone" id="dropZone">
+            <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+            <div class="upload-icon" aria-hidden="true">+</div>
+            <h2>Excel-Datei hochladen</h2>
+            <p>Benötigte Spalten: E-Mail, Name, E-Mail ASP, Zuständig, Anspruch dieses Jahr, Rest Vorjahr, genommen und offen.</p>
+            <label class="primary-button" for="fileInput">Datei auswählen</label>
+          </div>
+
+          <div class="field-grid">
+            <label>
+              <span>Stichtag</span>
+              <input id="deadlineInput" type="date" />
+            </label>
+            <label>
+              <span>Absender/Leitung</span>
+              <input id="senderInput" type="text" placeholder="z. B. Personalabteilung" />
+            </label>
+            <label>
+              <span>Nur senden ab offen &gt;</span>
+              <input id="thresholdInput" type="number" min="0" step="0.5" value="0" />
+            </label>
+          </div>
+        </aside>
+
+        <section class="main-panel">
+          <div class="status-strip">
+            <div>
+              <span id="totalCount">0</span>
+              <small>Datensätze</small>
+            </div>
+            <div>
+              <span id="openCount">0</span>
+              <small>mit offenem Urlaub</small>
+            </div>
+            <div>
+              <span id="loggedCount">0</span>
+              <small>dokumentiert</small>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <div class="filter-group" role="tablist" aria-label="Filter">
+              <button class="filter-button active" data-filter="open" type="button">Offen</button>
+              <button class="filter-button" data-filter="all" type="button">Alle</button>
+              <button class="filter-button" data-filter="logged" type="button">Dokumentiert</button>
+            </div>
+            <div class="toolbar-actions">
+              <span id="smtpStatus" class="smtp-status">SMTP nicht geprüft</span>
+              <button id="sendAllButton" class="send-button" type="button">Alle Mitarbeiter senden</button>
+              <button id="sendAspButton" class="secondary-button" type="button">ASP informieren</button>
+              <button id="exportLogButton" class="secondary-button" type="button">Protokoll exportieren</button>
+              <button id="exportMailListButton" class="secondary-button" type="button">E-Mail-Liste exportieren</button>
+            </div>
+          </div>
+
+          <div id="validationPanel" class="validation-panel">
+            <div class="validation-head">
+              <h2>Validierung</h2>
+              <span id="validationSummary">Keine Datei geladen.</span>
+            </div>
+            <div id="validationList" class="validation-list"></div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>E-Mail</th>
+                  <th>Name</th>
+                  <th>Zuständig</th>
+                  <th>Anspruch Jahr</th>
+                  <th>Rest Vorjahr</th>
+                  <th>Genommen</th>
+                  <th>Offen</th>
+                  <th>Status</th>
+                  <th>Aktion</th>
+                </tr>
+              </thead>
+              <tbody id="employeeTable">
+                <tr class="empty-row">
+                  <td colspan="9">Noch keine Datei geladen.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
