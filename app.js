@@ -599,6 +599,11 @@ function isDocumented(employee) {
   return Boolean(state.log[employee.id] || employee.correction);
 }
 
+function deliveryCountLabel(logEntry) {
+  const count = Array.isArray(logEntry?.deliveries) ? logEntry.deliveries.length : 1;
+  return count > 1 ? ` (${count}x)` : "";
+}
+
 function issue(level, employee, title, detail) {
   return {
     detail,
@@ -642,6 +647,9 @@ function render() {
   });
   selectors.employeeTable.querySelectorAll("[data-send]").forEach((button) => {
     button.addEventListener("click", () => sendEmail(button.dataset.send, button));
+  });
+  selectors.employeeTable.querySelectorAll("[data-remind]").forEach((button) => {
+    button.addEventListener("click", () => sendReminderEmail(button.dataset.remind, button));
   });
   selectors.employeeTable.querySelectorAll("[data-correct]").forEach((button) => {
     button.addEventListener("click", () => correctVacation(button.dataset.correct));
@@ -697,7 +705,7 @@ function renderRow(employee) {
   const blockingIssue = state.validation.find((item) => item.employeeId === employee.id && item.level === "error");
   const statusClass = logEntry ? "done" : blockingIssue ? "error" : hasOpenVacation ? "open" : "done";
   const statusText = logEntry
-    ? `Gesendet ${formatDateTime(logEntry.sentAt)}`
+    ? `Gesendet ${formatDateTime(logEntry.sentAt)}${deliveryCountLabel(logEntry)}`
     : employee.correction
       ? `Korrigiert ${formatDateTime(employee.correction.correctedAt)}`
     : blockingIssue
@@ -720,9 +728,10 @@ function renderRow(employee) {
       <div class="action-cell">
         <button class="mark-button" type="button" data-toggle-actions="${escapeHtml(employee.id)}">${actionsExpanded ? "Schliessen" : "Korrektur"}</button>
         <div class="action-details ${actionsExpanded ? "" : "is-hidden"}">
-          ${isEmail(employee.email) && hasOpenVacation ? `<button class="send-button" type="button" data-send="${escapeHtml(employee.id)}">Direkt senden</button>` : ""}
+          ${isEmail(employee.email) && hasOpenVacation && !logEntry ? `<button class="send-button" type="button" data-send="${escapeHtml(employee.id)}">Direkt senden</button>` : ""}
+          ${isEmail(employee.email) && hasOpenVacation && logEntry ? `<button class="send-button" type="button" data-remind="${escapeHtml(employee.id)}">Erinnerung senden</button>` : ""}
           ${isEmail(employee.email) && hasOpenVacation ? `<a class="action-link" href="${mailTo}">E-Mail oeffnen</a>` : ""}
-          ${isEmail(employee.email) && hasOpenVacation ? `<button class="mark-button" type="button" data-mark="${escapeHtml(employee.id)}">Als gesendet dokumentieren</button>` : ""}
+          ${isEmail(employee.email) && hasOpenVacation && !logEntry ? `<button class="mark-button" type="button" data-mark="${escapeHtml(employee.id)}">Als gesendet dokumentieren</button>` : ""}
           ${renderCorrectionControl(employee)}
         </div>
       </div>
@@ -959,6 +968,31 @@ async function sendEmail(id, button) {
   }
 }
 
+async function sendReminderEmail(id, button) {
+  const employee = state.employees.find((item) => item.id === id);
+  if (!employee) return;
+  if (!isEmail(employee.email)) {
+    alert(`Diese Person hat keine gueltige E-Mail-Adresse:\n${emailValidationMessage(employee.email)}`);
+    return;
+  }
+
+  if (!confirm(`Soll die Erinnerung erneut an ${employee.email} gesendet werden?`)) return;
+
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Sende...";
+
+  try {
+    const result = await sendEmployeeBySmtp(employee);
+    markAsSent(id, "smtp-reminder", result);
+    alert("Erinnerung wurde gesendet und im Protokoll ergaenzt.");
+  } catch (error) {
+    alert(`Erinnerung konnte nicht gesendet werden: ${error.message}`);
+    button.disabled = false;
+    button.textContent = previousText;
+  }
+}
+
 async function sendAllEmails() {
   const openNotLogged = state.employees.filter((employee) => needsNotice(employee) && !state.log[employee.id]);
   const invalidEmployees = openNotLogged.filter((employee) => !isEmail(employee.email));
@@ -1111,7 +1145,8 @@ function markAsSent(id, method = "mailto", sendResult = {}, shouldRender = true)
   const employee = state.employees.find((item) => item.id === id);
   if (!employee) return;
 
-  state.log[id] = {
+  const previousLog = state.log[id];
+  const logEntry = {
     company: "",
     deadline: selectors.deadlineInput.value,
     department: employee.department,
@@ -1132,6 +1167,15 @@ function markAsSent(id, method = "mailto", sendResult = {}, shouldRender = true)
     smtpMessageId: sendResult.messageId || "",
     subject: buildSubject(),
     templateVersion: selectors.templateVersionInput.value.trim(),
+  };
+  const previousDeliveries = Array.isArray(previousLog?.deliveries)
+    ? previousLog.deliveries
+    : previousLog
+      ? [previousLog]
+      : [];
+  state.log[id] = {
+    ...logEntry,
+    deliveries: [...previousDeliveries, logEntry],
   };
   saveLog();
   if (shouldRender) render();
@@ -1398,8 +1442,8 @@ function storeEntitlementCorrection(employee, entitlement) {
 }
 
 function exportLog() {
-  const mailRows = Object.values(state.log).map((entry) => ({
-    Art: entry.method === "smtp-asp" ? "ASP-Zusammenfassung" : "E-Mail-Hinweis",
+  const mailRows = Object.values(state.log).flatMap(expandLogEntry).map((entry) => ({
+    Art: entry.method === "smtp-asp" ? "ASP-Zusammenfassung" : entry.method === "smtp-reminder" ? "E-Mail-Erinnerung" : "E-Mail-Hinweis",
     Name: entry.name,
     "E-Mail": entry.email,
     "E-Mail ASP": entry.emailAsp || (entry.method === "smtp-asp" ? entry.email : ""),
@@ -1441,6 +1485,11 @@ function exportLog() {
     Hinweistext: `${entry.deleted ? `Zeile wurde am ${formatDateTime(entry.deletedAt || entry.correctedAt)} in der App geloescht. ` : ""}E-Mail neu: ${entry.email || "-"}. E-Mail urspruenglich: ${entry.originalEmail || entry.email || "-"}. Nachtraeglich genommene Urlaubstage: ${formatStoredNumber(entry.correctionTotal)}. Anspruch dieses Jahr neu: ${formatStoredNumber(entry.entitlementOverride)}. Rest Vorjahr: ${formatStoredNumber(entry.previousRemainingOverride)}. Genommen neu: ${formatStoredNumber(entry.takenOverride)}. Offen neu: ${formatStoredNumber(entry.remainingOverride)}. Korrigiert am: ${formatDateTime(entry.correctedAt)}.`,
   }));
   downloadCsv([...mailRows, ...correctionRows], "urlaubshinweis-protokoll.csv");
+}
+
+function expandLogEntry(entry) {
+  if (Array.isArray(entry.deliveries) && entry.deliveries.length) return entry.deliveries;
+  return [entry];
 }
 
 function exportMailList() {
