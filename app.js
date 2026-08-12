@@ -58,10 +58,15 @@ const selectors = {
 const defaultTemplate = `Liebe/r {{name}},
 
 dies ist eine automatisch generierte eMail. Wir möchten Dich informieren, daß Du noch folgende Urlaubsansprüche besitzt:
-Anspruch aus Vorjahr:         {{entitlement}}
-Anspruch lfd. Jahr                 {{previousRemaining}}
-Ansprechperson	        {{manager}}
-Solltest Du noch einen Urlaubsanspruch aus dem Vorjahr besitzen, kläre bitte schnellstmöglich, wann dieser genommen werden kann. Herzlichen Dank für Deine Unterstützung! Deine SMD-KI.
+
+- Anspruch aus Vorjahr: {{previousRemaining}}
+- Anspruch lfd. Jahr: {{entitlement}}
+- Resturlaub: {{remaining}}
+- Ansprechperson: {{manager}}
+
+Solltest Du noch einen Urlaubsanspruch aus dem Vorjahr besitzen, kläre bitte schnellstmöglich, wann dieser genommen werden kann.
+
+Herzlichen Dank für Deine Unterstützung! Deine SMD-KI.
 ---------------------------------
 Urlaubregel (Stand 2025)
 Der Urlaub jeden Jahres ist bis zum 31.12. zu planen und zu nehmen. In Rücksprache mit Eurem Arbeitszweigleiter kann dieser auch bis zum 31.03. der Folgejahres genommen werden - dies hat schriftlich mit Begründung zu erfolgen. Sollte auch dies in sehr besonderen Fällen nicht möglich sein, kann durch die Vorstandsgenehmigung im Jahr 2025 der Urlaub bis zum 30.06. des Folge-jahres genommen werden. Die gewährten schriftlichen Verlängerungen sind der Personalabteilung zu übermitteln.`;
