@@ -43,6 +43,7 @@ const selectors = {
   mappingPanel: document.querySelector("#mappingPanel"),
   openCount: document.querySelector("#openCount"),
   resetTemplateButton: document.querySelector("#resetTemplateButton"),
+  remindAllButton: document.querySelector("#remindAllButton"),
   sendAllButton: document.querySelector("#sendAllButton"),
   sendAspButton: document.querySelector("#sendAspButton"),
   senderInput: document.querySelector("#senderInput"),
@@ -177,6 +178,7 @@ function init() {
   selectors.exportLogButton.addEventListener("click", exportLog);
   selectors.exportMailListButton.addEventListener("click", exportMailList);
   selectors.sendAllButton.addEventListener("click", sendAllEmails);
+  selectors.remindAllButton.addEventListener("click", sendAllReminderEmails);
   selectors.sendAspButton.addEventListener("click", sendAspSummaries);
   selectors.clearLogButton.addEventListener("click", () => {
     if (!confirm("Sollen lokales Versandprotokoll und Urlaubskorrekturen wirklich geloescht werden?")) return;
@@ -1039,6 +1041,54 @@ async function sendAllEmails() {
     return;
   }
   alert(`${employeesToSend.length} E-Mails wurden erfolgreich gesendet und dokumentiert.`);
+}
+
+async function sendAllReminderEmails() {
+  const alreadyLogged = state.employees.filter((employee) => needsNotice(employee) && state.log[employee.id]);
+  const invalidEmployees = alreadyLogged.filter((employee) => !isEmail(employee.email));
+  const employeesToSend = alreadyLogged.filter((employee) => isEmail(employee.email));
+
+  if (!employeesToSend.length) {
+    const invalidText = invalidEmployees.length
+      ? `\n\nUngueltige Adressen:\n${invalidEmployees.map((employee) => `${employee.name || "Ohne Name"}: ${emailValidationMessage(employee.email)}`).join("\n")}`
+      : "";
+    alert(`Keine bereits dokumentierten, offenen Mitarbeitenden fuer eine Erinnerung gefunden.${invalidText}`);
+    return;
+  }
+
+  const invalidNotice = invalidEmployees.length
+    ? `\n\n${invalidEmployees.length} Eintraege mit ungueltiger E-Mail werden uebersprungen und am Ende als Fehler angezeigt.`
+    : "";
+  if (!confirm(`Sollen jetzt ${employeesToSend.length} bereits dokumentierte Mitarbeitende erneut erinnert werden?${invalidNotice}`)) return;
+
+  const previousText = selectors.remindAllButton.textContent;
+  selectors.remindAllButton.disabled = true;
+  const failures = invalidEmployees.map((employee) => {
+    return `${employee.name || "Ohne Name"}: ${emailValidationMessage(employee.email)}`;
+  });
+
+  try {
+    for (let index = 0; index < employeesToSend.length; index += 1) {
+      const employee = employeesToSend[index];
+      selectors.remindAllButton.textContent = `Erinnere ${index + 1}/${employeesToSend.length}`;
+      try {
+        const result = await sendEmployeeBySmtp(employee);
+        markAsSent(employee.id, "smtp-reminder", result, false);
+      } catch (error) {
+        failures.push(`${employee.name || employee.email}: ${error.message}`);
+      }
+    }
+  } finally {
+    selectors.remindAllButton.disabled = false;
+    selectors.remindAllButton.textContent = previousText;
+    render();
+  }
+
+  if (failures.length) {
+    alert(`Erinnerungsversand fertig mit ${failures.length} Fehlern:\n\n${failures.join("\n")}`);
+    return;
+  }
+  alert(`${employeesToSend.length} Erinnerungen wurden erfolgreich gesendet und im Protokoll ergaenzt.`);
 }
 
 async function sendAspSummaries() {
