@@ -6,7 +6,7 @@ const mappingFields = [
   { key: "entitlement", label: "Anspruch dieses Jahr", aliases: ["anspruchdiesesjahr", "anspruch", "urlaubsanspruch", "jahresurlaub", "urlaubstage"] },
   { key: "previousRemaining", label: "Rest Vorjahr", aliases: ["restvorjahr", "restausvorjahr", "vorjahresurlaub", "urlaubvorjahr", "uebertrag", "ubertrag"] },
   { key: "taken", label: "Genommen", aliases: ["genommen", "genommenerurlaub", "verbrauchterurlaub", "urlaubgenommene tage", "urlaubstagegenommen"] },
-  { key: "remaining", label: "Offen", aliases: ["offen", "resturlaub", "offenerurlaub", "verbleibend", "ubrig", "saldo"] },
+  { key: "remaining", label: "Offen / Resturlaub aus Excel", aliases: ["offen", "resturlaub", "offenerurlaub", "verbleibend", "ubrig", "saldo"] },
   { key: "vacationTaken", label: "Urlaub genommen", aliases: ["urlaubgenommen", "urlaubgenutzt", "urlaubbereitsgenommen"] },
 ];
 
