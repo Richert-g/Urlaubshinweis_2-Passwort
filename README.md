@@ -30,7 +30,7 @@ Die Importdatei sollte diese Spalten enthalten:
 E-Mail;Name;E-Mail ASP;Zustaendig;Anspruch dieses Jahr;Rest Vorjahr;Genommen;Offen
 ```
 
-Die Spalte `Offen` wird nicht berechnet, sondern direkt aus der Datei uebernommen. Bei Excel-Dateien liest die App den angezeigten Zellwert. Wenn Excel also durch Zellformatierung `18` anzeigt, wird auch `18` importiert und nicht ein versteckter Rohwert wie `18,44`.
+Die Spalte `Offen` wird nicht berechnet, sondern direkt aus der Datei uebernommen. Zahlenwerte aus Excel oder CSV werden auf eine Nachkommastelle gerundet. Aus `18,44` wird also `18,4`.
 
 ## Installation
 

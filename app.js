@@ -294,7 +294,7 @@ function readWorkbook(file) {
   reader.onload = (event) => {
     const workbook = XLSX.read(new Uint8Array(event.target.result), { type: "array" });
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "", raw: false });
+    const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
     state.fileName = file.name;
     state.expandedActions.clear();
     state.rawRows = rows;
@@ -457,11 +457,11 @@ function normalizeRows(rows) {
       const email = readField(row, normalized, "email");
       const emailAsp = readField(row, normalized, "emailAsp");
       const responsible = readField(row, normalized, "responsible");
-      const entitlement = toNumber(readField(row, normalized, "entitlement"));
-      const previousRemaining = toNumber(readField(row, normalized, "previousRemaining"));
-      const taken = toNumber(readField(row, normalized, "taken"));
+      const entitlement = roundVacationNumber(toNumber(readField(row, normalized, "entitlement")));
+      const previousRemaining = roundVacationNumber(toNumber(readField(row, normalized, "previousRemaining")));
+      const taken = roundVacationNumber(toNumber(readField(row, normalized, "taken")));
       const vacationTakenFlag = toBoolean(readField(row, normalized, "vacationTaken"));
-      const remainingFromFile = toNumber(readField(row, normalized, "remaining"));
+      const remainingFromFile = roundVacationNumber(toNumber(readField(row, normalized, "remaining")));
       const remaining = remainingFromFile;
 
       return {
@@ -550,6 +550,11 @@ function toNumber(value) {
 
   const number = Number(normalized);
   return Number.isFinite(number) ? number : Number.NaN;
+}
+
+function roundVacationNumber(value) {
+  if (!Number.isFinite(value)) return Number.NaN;
+  return Math.round((value + Number.EPSILON) * 10) / 10;
 }
 
 function toBoolean(value) {
@@ -1675,7 +1680,7 @@ function formatDateTime(value) {
 
 function formatNumber(value) {
   if (!Number.isFinite(value)) return "-";
-  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(value);
 }
 
 function formatStoredNumber(value) {
