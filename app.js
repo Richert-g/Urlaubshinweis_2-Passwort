@@ -44,6 +44,7 @@ const selectors = {
   openCount: document.querySelector("#openCount"),
   resetTemplateButton: document.querySelector("#resetTemplateButton"),
   remindAllButton: document.querySelector("#remindAllButton"),
+  roundingInput: document.querySelector("#roundingInput"),
   sendAllButton: document.querySelector("#sendAllButton"),
   sendAspButton: document.querySelector("#sendAspButton"),
   senderInput: document.querySelector("#senderInput"),
@@ -165,6 +166,10 @@ function init() {
     saveAppState();
     render();
   });
+  selectors.roundingInput.addEventListener("input", () => {
+    saveAppState();
+    rebuildEmployees();
+  });
 
   selectors.resetTemplateButton.addEventListener("click", () => {
     selectors.templateInput.value = defaultTemplate;
@@ -222,6 +227,7 @@ function deleteEverything() {
   selectors.fileInput.value = "";
   selectors.senderInput.value = "";
   selectors.thresholdInput.value = "0";
+  selectors.roundingInput.value = "1";
   selectors.deadlineInput.value = `${new Date().getFullYear()}-12-31`;
   selectors.templateInput.value = defaultTemplate;
   selectors.aspTemplateInput.value = defaultAspTemplate;
@@ -244,6 +250,7 @@ function restoreAppState() {
   if (saved.deadline) selectors.deadlineInput.value = saved.deadline;
   if (saved.threshold !== undefined) selectors.thresholdInput.value = saved.threshold;
   if (saved.sender !== undefined) selectors.senderInput.value = saved.sender;
+  if (saved.roundingDecimals !== undefined) selectors.roundingInput.value = saved.roundingDecimals;
 
   renderMappingPanel();
   state.employees = normalizeRows(state.rawRows).map(applyStoredCorrection).filter((employee) => !employee.deleted);
@@ -267,6 +274,7 @@ function saveAppState() {
     headers: state.headers,
     mapping: state.mapping,
     rawRows: state.rawRows,
+    roundingDecimals: selectors.roundingInput.value,
     sender: selectors.senderInput.value,
     threshold: selectors.thresholdInput.value,
   };
@@ -554,7 +562,14 @@ function toNumber(value) {
 
 function roundVacationNumber(value) {
   if (!Number.isFinite(value)) return Number.NaN;
-  return Math.round((value + Number.EPSILON) * 10) / 10;
+  const factor = 10 ** getRoundingDecimals();
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+
+function getRoundingDecimals() {
+  const decimals = Number(selectors.roundingInput?.value ?? 1);
+  if (!Number.isFinite(decimals)) return 1;
+  return Math.min(Math.max(Math.trunc(decimals), 0), 3);
 }
 
 function toBoolean(value) {
@@ -1680,7 +1695,7 @@ function formatDateTime(value) {
 
 function formatNumber(value) {
   if (!Number.isFinite(value)) return "-";
-  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: getRoundingDecimals() }).format(value);
 }
 
 function formatStoredNumber(value) {

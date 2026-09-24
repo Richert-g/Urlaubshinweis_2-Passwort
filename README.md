@@ -30,7 +30,7 @@ Die Importdatei sollte diese Spalten enthalten:
 E-Mail;Name;E-Mail ASP;Zustaendig;Anspruch dieses Jahr;Rest Vorjahr;Genommen;Offen
 ```
 
-Die Spalte `Offen` wird nicht berechnet, sondern direkt aus der Datei uebernommen. Zahlenwerte aus Excel oder CSV werden auf eine Nachkommastelle gerundet. Aus `18,44` wird also `18,4`.
+Die Spalte `Offen` wird nicht berechnet, sondern direkt aus der Datei uebernommen. Zahlenwerte aus Excel oder CSV werden nach der in der App eingestellten Rundung verarbeitet. Standard ist eine Nachkommastelle. Aus `18,44` wird dann `18,4`.
 
 ## Installation
 
@@ -124,10 +124,11 @@ Wenn kein `APP_PASSWORD` gesetzt ist, zeigt der Server eine Fehlermeldung auf de
 3. Falls noetig unter `Konfiguration` die Spaltenzuordnung pruefen.
 4. Validierung lesen.
 5. E-Mail-Texte unter `Konfiguration` pruefen.
-6. Einzelne Zeilen ueber `Korrektur` bearbeiten.
-7. Einzelne Mitarbeiter direkt senden oder `Alle Mitarbeiter senden` verwenden.
-8. Optional `ASP informieren` senden.
-9. Protokoll exportieren und ablegen.
+6. Bei Bedarf links `Rundung Nachkommastellen` einstellen.
+7. Einzelne Zeilen ueber `Korrektur` bearbeiten.
+8. Einzelne Mitarbeiter direkt senden oder `Alle Mitarbeiter senden` verwenden.
+9. Optional `ASP informieren` senden.
+10. Protokoll exportieren und ablegen.
 
 ## Verfuegbare Variablen in E-Mail-Texten
 
