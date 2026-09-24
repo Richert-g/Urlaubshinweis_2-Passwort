@@ -294,7 +294,7 @@ function readWorkbook(file) {
   reader.onload = (event) => {
     const workbook = XLSX.read(new Uint8Array(event.target.result), { type: "array" });
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+    const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "", raw: false });
     state.fileName = file.name;
     state.expandedActions.clear();
     state.rawRows = rows;
